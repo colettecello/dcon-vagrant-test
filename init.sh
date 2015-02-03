@@ -7,7 +7,7 @@ apt-get -y update
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get -y install \
-	apache2 mysql-server libapache2-mod-auth-mysql git
+	mysql-server git
 
 git clone http://oculolinct.us:8080/dcon.git/ /var/dcon
 
@@ -33,6 +33,6 @@ python shell.py # create database (sqlite for now)
 
 pip install twisted # temporary testing app server
 
-service apache2 stop # free up port 80
+twistd -n web -p 80 --wsgi newrem.main.app #start twisted server
 
-twistd -n web -p 80 --wsgi newrem.main.app &
+

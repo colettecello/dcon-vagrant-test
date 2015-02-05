@@ -6,8 +6,13 @@ apt-get -y update
 
 export DEBIAN_FRONTEND=noninteractive
 
+# get nginx key and add to apt program
+wget http://nginx.org/keys/nginx_signing.key
+apt-key add nginx_signing.key
+
+# all the apt-gets
 apt-get -y install \
-        mysql-server git
+        nginx mysql-server git
 
 git clone http://oculolinct.us:8080/dcon.git/ /var/dcon
 
@@ -31,6 +36,7 @@ cp dcon.yaml.example dcon.yaml
 
 python shell.py # create database (sqlite for now)
 
-pip install twisted # temporary testing app server
+pip install gunicorn
 
-twistd -n web -p 80 --wsgi newrem.main.app #start twisted server
+service start nginx # start nginx server (default conf for now)
+

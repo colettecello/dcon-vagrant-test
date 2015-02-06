@@ -1,13 +1,16 @@
-#!/bin/bash
-
 set -x
 
 apt-get -y update
 
 export DEBIAN_FRONTEND=noninteractive
 
+# get nginx key and add to apt program
+wget http://nginx.org/keys/nginx_signing.key
+apt-key add nginx_signing.key
+
+# all the apt-gets
 apt-get -y install \
-        mysql-server git
+        nginx mysql-server git
 
 git clone http://oculolinct.us:8080/dcon.git/ /var/dcon
 
@@ -27,10 +30,16 @@ echo "admin:password" >> passwords.dcon
 
 # use example config file for now:
 cp dcon.yaml.example dcon.yaml
-#cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
+# cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
 
 python shell.py # create database (sqlite for now)
 
-pip install twisted # temporary testing app server
+pip install gunicorn # install gunicorn
 
-twistd -n web -p 80 --wsgi newrem.main.app #start twisted server
+service nginx stop # stop nginx so it can be configured
+
+# start gunicorn serving app with background daemon
+# process id will be saved to newrem.pid
+# gunicorn newrem.main:app -p newrem.pid -D
+
+

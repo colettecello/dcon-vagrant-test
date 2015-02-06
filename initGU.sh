@@ -1,5 +1,3 @@
-#!/bin/bash
-
 set -x
 
 apt-get -y update
@@ -32,11 +30,16 @@ echo "admin:password" >> passwords.dcon
 
 # use example config file for now:
 cp dcon.yaml.example dcon.yaml
-#cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
+# cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
 
 python shell.py # create database (sqlite for now)
 
-pip install gunicorn
+pip install gunicorn # install gunicorn
 
-service start nginx # start nginx server (default conf for now)
+service nginx stop # stop nginx so it can be configured
+
+# start gunicorn serving app with background daemon
+# process id will be saved to newrem.pid
+# gunicorn newrem.main:app -p newrem.pid -D
+
 

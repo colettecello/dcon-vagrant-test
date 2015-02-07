@@ -4,10 +4,6 @@ apt-get -y update
 
 export DEBIAN_FRONTEND=noninteractive
 
-# get nginx key and add to apt program
-wget http://nginx.org/keys/nginx_signing.key
-apt-key add nginx_signing.key
-
 # all the apt-gets
 apt-get -y install \
         nginx mysql-server git
@@ -34,12 +30,19 @@ cp dcon.yaml.example dcon.yaml
 
 python shell.py # create database (sqlite for now)
 
+chown -Rv nobody:nogroup /var/dcon
+
 pip install gunicorn # install gunicorn
 
-service nginx stop # stop nginx so it can be configured
+cp /vagrant/dcon.conf.init /etc/init/dcon.conf
+initctl reload-configuration
+service dcon start
 
-# start gunicorn serving app with background daemon
-# process id will be saved to newrem.pid
-# gunicorn newrem.main:app -p newrem.pid -D
+# configure nginx
+cp /vagrant/dcon.nginx /etc/nginx/sites-available/
+rm /etc/nginx/sites-enabled/default
+ln -s /etc/nginx/sites-available/dcon.nginx /etc/nginx/sites-enabled/dcon.nginx
 
+service nginx restart
 
+ip -4 addr show

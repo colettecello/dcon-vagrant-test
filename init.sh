@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # all the apt-gets
 apt-get -y install \
-        nginx mysql-server git
+        nginx mysql-server python-mysqldb git
 
 git clone http://oculolinct.us:8080/dcon.git/ /var/dcon
 
@@ -24,16 +24,28 @@ pwgen 50 1 > ./secret.key # dcon requires a secret value here
 touch passwords.dcon
 echo "admin:password" >> passwords.dcon
 
-# use example config file for now:
-cp dcon.yaml.example dcon.yaml
-# cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
+# setup mysql for dcon user <--Where do I put the 
+# username:password for mysql? dcon.yaml?
+mysql -u root <<EOF
+CREATE USER 'dcon'@'localhost' IDENTIFIED BY 'badpassword';
+CREATE DATABASE dcon;
+GRANT ALL PRIVILEGES ON *.* TO 'dcon'@'localhost';
+FLUSH PRIVILEGES;
+EOF
 
-python shell.py # create database (sqlite for now)
+# use example config file for now:
+# cp dcon.yaml.example dcon.yaml
+
+# use dcon.yaml config from vagrant dir
+cp /vagrant/dcon.yaml /var/dcon/dcon.yaml
+
+python shell.py # create database (mysql for now)
 
 chown -Rv nobody:nogroup /var/dcon
 
 pip install gunicorn # install gunicorn
 
+# configure gunicorn as a service
 cp /vagrant/dcon.conf.init /etc/init/dcon.conf
 initctl reload-configuration
 service dcon start
@@ -45,4 +57,4 @@ ln -s /etc/nginx/sites-available/dcon.nginx /etc/nginx/sites-enabled/dcon.nginx
 
 service nginx restart
 
-ip -4 addr show
+# ip -4 addr show

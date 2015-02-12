@@ -8,7 +8,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get -y install \
         nginx mysql-server python-mysqldb git
 
-git clone http://oculolinct.us:8080/dcon.git/ /var/dcon
+git clone https://github.com/MostAwesomeDude/dcon /var/dcon
 
 apt-get -y install python-pip python-dev pwgen
 

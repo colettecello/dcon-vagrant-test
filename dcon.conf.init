@@ -9,4 +9,4 @@ setgid nogroup
 chdir /var/dcon
 
 exec gunicorn newrem.main:app --chdir /var/dcon \
-	--pythonpath /var/dcon
+	--pythonpath /var/dcon --error-logfile gunicorn.log

@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # all the apt-gets
 apt-get -y install \
-        nginx mysql-server python-mysqldb git
+        nginx mysql-server python-mysqldb git varnish
 
 git clone https://github.com/MostAwesomeDude/dcon /var/dcon
 
@@ -55,6 +55,9 @@ cp /vagrant/dcon.nginx /etc/nginx/sites-available/
 rm /etc/nginx/sites-enabled/default
 ln -s /etc/nginx/sites-available/dcon.nginx /etc/nginx/sites-enabled/dcon.nginx
 
-service nginx restart
+# configure varnish
+cp /vagrant/varnish.dcon /etc/default/varnish
 
+service nginx restart
+service varnish restart
 # ip -4 addr show

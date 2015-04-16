@@ -1,22 +1,15 @@
 
-
 include '::mysql::server'
 
 # all the apt-gets
 
-package { 'python-mysqldb' :
-    ensure => installed,
-}
+$pkgs = [
+    'python-mysqldb',
+    'git',
+    'nginx',
+]
 
-package { 'git' :
-    ensure => installed,
-}
-
-package { 'nginx' :
-    ensure => installed,
-}
-
-package { 'pwgen' :
+package { $pkgs :
     ensure => installed,
 }
 
@@ -40,14 +33,14 @@ exec { 'requirements' :
   command => '/usr/bin/pip install -r /var/dcon/requirements.txt',
   creates => '/usr/local/lib/python2.7/dist-packages/parsley.py',
   require => Class ['python'],
+  before => Exec[setup-dcon],
 }
 
 # sets up secret hash for dcon to use
 
-exec { 'make secret.key':
-  command  => '/usr/bin/pwgen 50 1 > /var/dcon/secret.key',
-  creates => '/var/dcon/secret.key',
-  require => Vcsrepo['/var/dcon'], 
+file {"/var/dcon/secret.key":
+    content => "l34j5hlk34jbh6kwllkejrk2j3h44b5l23u4i234lj2k3hjhbn",
+    require => Vcsrepo['/var/dcon'], 
 }
 
 # dcon doesn't encrypt passwords, but here it is
@@ -55,18 +48,20 @@ exec { 'make secret.key':
 file {'/var/dcon/passwords.dcon':
    ensure => present,
    require => Vcsrepo['/var/dcon'],
-   contents => "admin:password",
+   content => "admin:password\n",
 }
-
 
 # setup dcon database before activating app
 
 mysql::db { 'dcon' :
-  user     => 'dcon',
-  password => 'badpassword',
-  host     => 'localhost',
-  grant    => ['ALL'], 
-  require  => [ Exec ['make passwords.dcon'], Exec ['make secret.key'] ],
+    user     => 'dcon',
+    password => 'badpassword',
+    host     => 'localhost',
+    grant    => ['ALL'], 
+    require  => [
+        File['/var/dcon/passwords.dcon'],
+        File['/var/dcon/secret.key']
+    ],
 }
 
 # use vagrant dcon.yaml config
@@ -79,64 +74,72 @@ file { 'dcon.yaml' :
 }
 
 # make the database, start the app
-exec { 'shell.py' :
-  path    => '/usr/bin',
-  command => 'python /var/dcon/shell.py || touch extra.txt',  
-  creates => '/var/dcon/extra.txt',
-  require =>[ Exec ['make passwords.dcon'], 
-              Exec ['make secret.key'], 
-              File ['dcon.yaml'] ],
+exec { 'setup-dcon':
+    cwd => '/var/dcon',
+    command => '/usr/bin/python /var/dcon/shell.py && /usr/bin/touch /var/dcon/.configured',
+    creates => '/var/dcon/.configured',
+    require => File ['dcon.yaml'],
 }
 
-# make the permissions right
-exec { 'chown dcon' :
-  path    => '/bin',
-  command => 'chown -Rv nobody:nogroup /var/dcon || touch /var/dcon/extra1.txt',
-  creates => '/var/dcon/extra1.txt',
-  require => Exec ['shell.py'],
-} 
-
-directory{'/var/dcon':
+file {'/var/dcon':
 	owner => 'nobody',
 	group => 'nogroup',
+    ensure => directory,
 	require => Vcsrepo ['/var/dcon'],
 }
-		
-# sets up gunicorn settings
-file { 'gunicorn conf' :
-  path    => '/etc/init/dcon.conf',
-  ensure  => present,
-  require => [Class ['python'], Exec ['chown dcon']],
-  source  => "/vagrant/dcon.conf.init",
-}
 
-# make gunicorn a service & start it
-exec { 'initctl reload' :
-  path    => '/sbin',
-  command => 'initctl reload-configuration',
-  require => File ['gunicorn conf'],
+
+if $operatingsystem == 'ubuntu' {
+    # sets up gunicorn settings
+    file { 'dcon-init-config' :
+        path    => '/etc/init/dcon.conf',
+        ensure  => present,
+        require => [
+            Class['python'],
+            File['/var/dcon'],
+            Exec[setup-dcon]
+        ],
+        source  => "/vagrant/dcon.conf.init",
+    }
+
+    # make gunicorn a service & start it
+    exec { 'hup-init' :
+        path    => '/sbin',
+        command => 'initctl reload-configuration',
+        require => File[dcon-init-config],
+    }
 }
 
 # FIXME start dcon with a puppet service object instead of an exec
 
-exec { 'start dcon' :
-  path    => '/usr/sbin',
-  command => 'service dcon start',
-  creates => '/var/dcon/gunicorn.log',
-  require => Exec ['initctl reload'],
+service {"dcon":
+    ensure => running,
+    enable => true,
+    require => Exec [hup-init],
+}
+
+service {"nginx":
+    ensure => running,
+    enable => true,
 }
 
 # sets up nginx with dcon settings
 file { 'rm-nginx-default' :
-   path => '/etc/nginx/sites-enabled/default',
-   ensure => absent,
-   require => Package['nginx'],
+    path => '/etc/nginx/sites-enabled/default',
+    ensure => absent,
+    require => [
+        Package['nginx'],
+        Exec['setup-dcon'],
+    ]
 }
 
 file { 'setup-nginx-codebase' :
-   path => '/etc/nginx/sites-enabled/dcon.nginx',
-   ensure => present,
-   require => Package['nginx'],
-   source => "/vagrant/dcon.nginx",
+    path => '/etc/nginx/sites-enabled/dcon.nginx',
+    ensure => present,
+    require => [
+        Package['nginx'],
+        File[rm-nginx-default],
+    ],
+    source => "/vagrant/dcon.nginx",
+    notify => Service[nginx]
 }
-

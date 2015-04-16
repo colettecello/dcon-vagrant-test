@@ -8,5 +8,5 @@ setuid nobody
 setgid nogroup
 chdir /var/dcon
 
-exec gunicorn newrem.main:app --chdir /var/dcon \
+exec gunicorn newrem.main:app \
 	--pythonpath /var/dcon --error-logfile gunicorn.log

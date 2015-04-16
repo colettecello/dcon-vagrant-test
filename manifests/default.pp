@@ -7,6 +7,7 @@ $pkgs = [
     'python-mysqldb',
     'git',
     'nginx',
+    'varnish',
 ]
 
 package { $pkgs :
@@ -110,17 +111,24 @@ if $operatingsystem == 'ubuntu' {
     }
 }
 
-# FIXME start dcon with a puppet service object instead of an exec
+# start dcon nginx varnish with a puppet service object
 
-service {"dcon":
+service {'dcon':
     ensure => running,
     enable => true,
     require => Exec [hup-init],
 }
 
-service {"nginx":
+service {'nginx':
     ensure => running,
     enable => true,
+    require => Package['nginx'],
+}
+
+service {'varnish':
+    ensure => running,
+    enable => true,
+    require => Package['varnish'],
 }
 
 # sets up nginx with dcon settings
@@ -140,6 +148,20 @@ file { 'setup-nginx-codebase' :
         Package['nginx'],
         File[rm-nginx-default],
     ],
-    source => "/vagrant/dcon.nginx",
+    source => '/vagrant/dcon.nginx',
     notify => Service[nginx]
 }
+
+# sets up varnish with dcon settings
+file { 'setup-varnish' :
+    path => '/etc/default/varnish/',
+    ensure => present,
+    require => [
+        Package['varnish'],
+        Exec['setup-dcon']
+    ],
+    source => '/vagrant/varnish.dcon',
+    notify => Service[varnish],
+}
+
+

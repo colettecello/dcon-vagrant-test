@@ -20,4 +20,5 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.network "forwarded_port", guest: 80, host: 8080
 
   config.vm.provision "shell", path: "init.sh"
+  config.vm.provision "puppet"
 end
